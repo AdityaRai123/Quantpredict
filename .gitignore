@@ -1,0 +1,13 @@
+# Raw per-stock pipeline output (regenerate with: py batch/run_all.py).
+# Everything in it is also packaged inside docs/downloads/stocks/*.zip.
+outputs/
+
+# claude.ai artifact build (regenerate with: py website/build_site.py)
+website/artifact.html
+website/artifact_files/
+
+# Local tooling
+.netlify/
+.claude/
+__pycache__/
+*.pyc

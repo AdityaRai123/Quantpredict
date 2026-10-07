@@ -1,0 +1,468 @@
+<title>QuantPredict</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap">
+<style>
+/*__STYLES__*/
+</style>
+
+<a class="skip" href="#explorer">Skip to the stock explorer</a>
+
+<header class="topbar" id="top">
+  <div class="topbar-inner">
+    <a class="brand" href="#top" aria-label="QuantPredict, back to top">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span class="brand-name">QuantPredict</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#question">Question</a>
+      <a href="#method">Method</a>
+      <a href="#results">Results</a>
+      <a href="#explorer">Explorer</a>
+      <a href="#downloads">Downloads</a>
+      <a href="#limits">Limits</a>
+    </nav>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch colour theme">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="4.2"></circle><path d="M10 1.5v2.2M10 16.3v2.2M1.5 10h2.2M16.3 10h2.2M4 4l1.5 1.5M14.5 14.5 16 16M4 16l1.5-1.5M14.5 5.5 16 4"></path></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <!-- ============================== HERO ============================== -->
+  <section class="hero wrap" aria-labelledby="heroTitle">
+    <div class="hero-copy">
+      <p class="eyebrow">B.Tech Project I &middot; Information Technology &middot; VIT Vellore</p>
+      <h1 id="heroTitle">QuantPredict</h1>
+      <p class="hero-q">Will tomorrow&rsquo;s close finish above today&rsquo;s? Eight models and fifteen voting rules try to answer that for every NIFTY&#8209;50 stock, without ever looking at the future.</p>
+      <p class="hero-a" id="heroAnswer">Loading results&hellip;</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#explorer">Explore a stock</a>
+        <a class="btn" href="#results">See the findings</a>
+      </div>
+    </div>
+    <figure class="hero-fig card">
+      <figcaption>
+        <span class="fig-title">Where every stock landed</span>
+        <span class="fig-sub">Test-period accuracy, one dot per stock. The shaded band is the &plusmn;3-point range that pure chance produces over ~1,000 days.</span>
+      </figcaption>
+      <div class="chart" id="heroChart" style="height:300px" role="img" aria-label="Strip chart of accuracy per stock for five methods, clustered around 50 percent"></div>
+    </figure>
+  </section>
+
+  <section class="kpis wrap" aria-label="Project at a glance">
+    <dl class="kpi-row" id="kpiRow"></dl>
+  </section>
+
+  <!-- ============================== QUESTION ============================== -->
+  <section class="section wrap" id="question" aria-labelledby="qTitle">
+    <div class="section-head">
+      <p class="eyebrow">The question</p>
+      <h2 id="qTitle">Predict one bit per day, and score it honestly</h2>
+    </div>
+    <div class="two-col">
+      <div class="prose">
+        <p>For every trading day <i>t</i>, the target is a single label:</p>
+        <div class="formula" aria-label="Target equals 1 if close at t plus 1 is greater than close at t, otherwise 0">
+          <span>Target<sub>t</sub></span><span class="eq">=</span>
+          <span class="cases"><span><b class="up-ink">1&nbsp;(UP)</b> if Close<sub>t+1</sub> &gt; Close<sub>t</sub></span><span><b class="down-ink">0&nbsp;(DOWN)</b> otherwise</span></span>
+        </div>
+        <p>Daily direction is famously hard to predict. Prices react to news that is not in yesterday&rsquo;s chart, and any pattern that worked reliably would be traded away. So the goal was never a magic model. It was a <strong>fair comparison</strong>: eight very different models and fifteen ways of combining them, all scored on the same unseen days, with every tuning choice made inside the training years.</p>
+        <p>The original project studied Reliance Industries in depth. This site runs the identical pipeline on all <span data-fill="n_stocks">49</span> usable NIFTY&#8209;50 stocks, so each conclusion can be checked across the whole index instead of one company.</p>
+      </div>
+      <ol class="rq-list" aria-label="Research questions">
+        <li><a href="#rq1"><span class="rq-tag">RQ1</span><span>Do six classical models, an LSTM and a Vision Transformer beat the always-guess-the-majority baseline?</span></a></li>
+        <li><a href="#rq2"><span class="rq-tag">RQ2</span><span>Does a Vision Transformer that reads 20-day feature matrices as images add value?</span></a></li>
+        <li><a href="#rq3"><span class="rq-tag">RQ3</span><span>Do soft, weighted, adaptive or stacked ensembles beat plain majority voting and the best single model?</span></a></li>
+        <li><a href="#rq4"><span class="rq-tag">RQ4</span><span>Does leakage-safe feature selection improve on the full 37-feature set?</span></a></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============================== METHOD ============================== -->
+  <section class="section wrap" id="method" aria-labelledby="mTitle">
+    <div class="section-head">
+      <p class="eyebrow">Method</p>
+      <h2 id="mTitle">One pipeline, eighteen steps, no look-ahead</h2>
+      <p class="lede">The same script, <code>Quantpredict.py</code>, ran unchanged for every stock. Step numbers below match the code.</p>
+    </div>
+
+    <ol class="pipeline" aria-label="Pipeline stages in order">
+      <li><span class="step">STEP 1&ndash;2a</span><b>Load &amp; clean</b><span>Parse NSE daily files, drop bad rows, and undo fake crashes from bonus issues and splits.</span></li>
+      <li><span class="step">STEP 3&ndash;4</span><b>37 features</b><span>MACD, RSI, ADX, Bollinger, ATR, OBV, moving-average distances, volatility, lags. All stationary.</span></li>
+      <li><span class="step">STEP 5</span><b>Split by time</b><span>First 80% of days train, last 20% test. Scaler fitted on training rows only.</span></li>
+      <li><span class="step">STEP 6</span><b>Select features</b><span>Mutual information and tree importance pick a Top-20, judged by walk-forward F1.</span></li>
+      <li><span class="step">STEP 7&ndash;9</span><b>Train 8 models</b><span>Six classical classifiers, an LSTM on 20-day windows and a patch-based Vision Transformer.</span></li>
+      <li><span class="step">STEP 10B</span><b>Walk-forward</b><span>Four expanding folds inside the training years give honest out-of-fold predictions.</span></li>
+      <li><span class="step">STEP 11&ndash;14</span><b>Vote</b><span>Majority, soft, F1-weighted, adaptive weighted voting and stacking, with weights from validation only.</span></li>
+      <li><span class="step">STEP 15&ndash;18</span><b>Score &amp; audit</b><span>Every row scored on the same test days, then 18 automated leakage checks.</span></li>
+    </ol>
+
+    <div class="method-grid">
+      <article class="card pad">
+        <h3>The eight models</h3>
+        <p class="muted">Each keeps its colour in every chart on this page.</p>
+        <ul class="model-list" id="modelList"></ul>
+      </article>
+      <article class="card pad">
+        <h3>The voting rules</h3>
+        <dl class="rules">
+          <div><dt>Majority</dt><dd>One vote per model; UP if more than half say UP.</dd></div>
+          <div><dt>Soft</dt><dd>Average the models&rsquo; P(UP); UP if the average is at least 0.50.</dd></div>
+          <div><dt>Weighted</dt><dd>Weights proportional to each model&rsquo;s walk-forward validation F1, fixed for the whole test.</dd></div>
+          <div><dt>Adaptive</dt><dd>Weights recomputed every day from each model&rsquo;s accuracy over the last <i>W</i> known days, sharpened by &beta;. <i>W</i> and &beta; are tuned on the training period.</dd></div>
+          <div><dt>Stacking</dt><dd>A logistic-regression meta-model learns how to combine out-of-fold probabilities.</dd></div>
+        </dl>
+        <p class="muted small">&ldquo;7&rdquo; ensembles use six classical models + LSTM. &ldquo;8&rdquo; adds the Vision Transformer and is marked experimental.</p>
+      </article>
+      <article class="card pad span-2">
+        <h3>How the timeline is split</h3>
+        <p class="muted">Walk-forward folds live entirely inside the training years. Voting weights, feature sets and adaptive settings are all chosen there. The test period is touched once, for scoring.</p>
+        <div class="wf" id="wfDiagram" role="img" aria-label="Timeline: training period with four expanding walk-forward folds, followed by the untouched test period"></div>
+      </article>
+      <article class="card pad span-2 ca-note">
+        <h3>Why prices had to be repaired first</h3>
+        <p>NSE files hold raw traded prices. A 1:1 bonus issue halves the price overnight, which looks like a &minus;50% crash, creates a false DOWN label and breaks every indicator around it. The pipeline flags a day as a corporate action only when both the open and the close fall below 0.78&times; the previous close, snaps the gap to a clean ratio such as 1/2 or 1/5, and rescales all earlier rows. Real crashes, like March 2020, open near 0.90&times; and are left alone. Across the dataset it found <b data-fill="ca_total">&hellip;</b> such events in <b data-fill="ca_stocks">&hellip;</b> stocks.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================== RESULTS ============================== -->
+  <section class="section wrap" id="results" aria-labelledby="rTitle">
+    <div class="section-head">
+      <p class="eyebrow">Results across all stocks</p>
+      <h2 id="rTitle">What <span data-fill="n_stocks">49</span> stocks say</h2>
+      <p class="lede" id="resultsLede"></p>
+    </div>
+
+    <div class="findings" id="findings"></div>
+
+    <article class="rq card" id="rq1">
+      <header class="rq-head"><span class="rq-tag">RQ1</span><h3 id="rq1Title">Single models against the baseline</h3></header>
+      <p class="rq-answer" id="rq1Answer"></p>
+      <div class="rq-grid">
+        <figure class="fig">
+          <figcaption><span class="fig-title">Test accuracy by model</span><span class="fig-sub">Dot = mean over all stocks, bar = middle 50% of stocks. Hover for details.</span></figcaption>
+          <div class="chart" id="rq1Chart" style="height:340px"></div>
+          <details class="table-toggle"><summary>Show as table</summary><div class="table-wrap" id="rq1Table"></div></details>
+        </figure>
+        <figure class="fig">
+          <figcaption><span class="fig-title">Best single model, by stock count</span><span class="fig-sub">How often each model was the top individual model on a stock&rsquo;s test period.</span></figcaption>
+          <div class="chart" id="rq1Wins" style="height:340px"></div>
+        </figure>
+      </div>
+    </article>
+
+    <article class="rq card" id="rq2">
+      <header class="rq-head"><span class="rq-tag">RQ2</span><h3>The Vision Transformer</h3></header>
+      <p class="rq-answer" id="rq2Answer"></p>
+      <figure class="fig">
+        <figcaption><span class="fig-title">Adding the ViT to each ensemble</span><span class="fig-sub">Mean accuracy of the 7-model version (without ViT) and the 8-model version (with ViT), averaged over stocks.</span></figcaption>
+        <div class="chart" id="rq2Chart" style="height:320px"></div>
+        <details class="table-toggle"><summary>Show as table</summary><div class="table-wrap" id="rq2Table"></div></details>
+      </figure>
+    </article>
+
+    <article class="rq card" id="rq3">
+      <header class="rq-head"><span class="rq-tag">RQ3</span><h3>Ensembles: steadier, not smarter</h3></header>
+      <p class="rq-answer" id="rq3Answer"></p>
+      <div class="rq-stack">
+        <figure class="fig">
+          <figcaption><span class="fig-title">Mean accuracy of each voting rule</span><span class="fig-sub">Averaged over stocks. Dashed reference: the average single model.</span></figcaption>
+          <div class="chart" id="rq3Chart" style="height:430px"></div>
+        </figure>
+        <figure class="fig">
+          <figcaption><span class="fig-title">Head-to-head, stock by stock</span><span class="fig-sub">Number of stocks on which each rule scored higher than plain majority voting, the average single model, and that stock&rsquo;s best single model (picked with hindsight).</span></figcaption>
+          <div class="table-wrap" id="rq3Table"></div>
+        </figure>
+      </div>
+    </article>
+
+    <article class="rq card" id="rq4">
+      <header class="rq-head"><span class="rq-tag">RQ4</span><h3>Feature selection</h3></header>
+      <p class="rq-answer" id="rq4Answer"></p>
+      <figure class="fig">
+        <figcaption><span class="fig-title">All 37 features vs a selected Top-20</span><span class="fig-sub">Mean accuracy per model. Selectors were fitted on training rows only.</span></figcaption>
+        <div class="chart" id="rq4Chart" style="height:340px"></div>
+        <details class="table-toggle"><summary>Show as table</summary><div class="table-wrap" id="rq4Table"></div></details>
+      </figure>
+    </article>
+
+    <article class="card heat-card">
+      <header class="heat-head">
+        <div>
+          <h3>Every stock &times; every method</h3>
+          <p class="muted">Test accuracy. Blue is above 50%, red below, grey is a coin flip. Click a row to open that stock.</p>
+        </div>
+        <div class="seg" role="group" aria-label="Sort rows">
+          <span class="seg-label">Sort</span>
+          <button type="button" class="seg-btn is-on" data-sort="symbol">A&ndash;Z</button>
+          <button type="button" class="seg-btn" data-sort="adaptive">Adaptive vote</button>
+          <button type="button" class="seg-btn" data-sort="best">Best single</button>
+          <button type="button" class="seg-btn" data-sort="industry">Industry</button>
+        </div>
+      </header>
+      <div class="heat-scroll"><div class="chart" id="heatChart" style="height:1040px;min-width:760px"></div></div>
+    </article>
+  </section>
+
+  <!-- ============================== EXPLORER ============================== -->
+  <section class="section explorer" id="explorer" aria-labelledby="eTitle">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Stock explorer</p>
+        <h2 id="eTitle">Pick a stock</h2>
+        <p class="lede">Each tile shows that stock&rsquo;s adaptive-vote accuracy on its test period. Everything below updates to the stock you choose.</p>
+      </div>
+
+      <div class="board-controls">
+        <label class="search">
+          <span class="sr-only">Search stocks</span>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"></circle><path d="m13 13 4.5 4.5"></path></svg>
+          <input id="stockSearch" type="search" placeholder="Search symbol or company" autocomplete="off">
+        </label>
+        <div class="chips" id="industryChips" role="group" aria-label="Filter by industry"></div>
+      </div>
+      <div class="board" id="board" role="listbox" aria-label="Stocks"></div>
+
+      <div class="stock" id="stockPanel" aria-live="polite">
+        <header class="stock-head">
+          <div class="stock-id">
+            <p class="stock-sym" id="sSym">&mdash;</p>
+            <h3 class="stock-name" id="sName">Loading&hellip;</h3>
+            <p class="stock-meta" id="sMeta"></p>
+          </div>
+          <div class="stock-nav">
+            <button type="button" class="btn btn-sm" id="prevStock" aria-label="Previous stock">&larr; Prev</button>
+            <button type="button" class="btn btn-sm" id="nextStock" aria-label="Next stock">Next &rarr;</button>
+            <button type="button" class="btn btn-sm btn-primary" id="stockZip">Download ZIP</button>
+          </div>
+        </header>
+
+        <p class="dl-status dl-status-top" id="dlStatusTop" role="status"></p>
+        <dl class="tiles" id="sTiles"></dl>
+
+        <div class="tabs" role="tablist" aria-label="Stock views" id="tabs">
+          <button role="tab" type="button" id="tab-overview" aria-controls="pane-overview" aria-selected="true">Price</button>
+          <button role="tab" type="button" id="tab-models" aria-controls="pane-models" aria-selected="false">Models</button>
+          <button role="tab" type="button" id="tab-voting" aria-controls="pane-voting" aria-selected="false">Voting</button>
+          <button role="tab" type="button" id="tab-daily" aria-controls="pane-daily" aria-selected="false">Day by day</button>
+          <button role="tab" type="button" id="tab-features" aria-controls="pane-features" aria-selected="false">Features</button>
+          <button role="tab" type="button" id="tab-training" aria-controls="pane-training" aria-selected="false">Training</button>
+          <button role="tab" type="button" id="tab-next" aria-controls="pane-next" aria-selected="false">Next-day call</button>
+          <button role="tab" type="button" id="tab-checks" aria-controls="pane-checks" aria-selected="false">Integrity</button>
+        </div>
+
+        <div class="pane" role="tabpanel" id="pane-overview" aria-labelledby="tab-overview">
+          <figure class="fig">
+            <figcaption><span class="fig-title">Adjusted close</span><span class="fig-sub">After split and bonus back-adjustment. Shaded: test period. Vertical marks: detected corporate actions. Drag the slider to zoom.</span></figcaption>
+            <div class="chart" id="priceChart" style="height:340px"></div>
+            <div class="chart" id="volumeChart" style="height:150px"></div>
+          </figure>
+          <div class="split-facts" id="splitFacts"></div>
+        </div>
+
+        <div class="pane" role="tabpanel" id="pane-models" aria-labelledby="tab-models" hidden>
+          <div class="pane-controls">
+            <div class="seg" role="group" aria-label="Rows to show" id="kindSeg">
+              <button type="button" class="seg-btn is-on" data-kind="all">All</button>
+              <button type="button" class="seg-btn" data-kind="Individual">Single models</button>
+              <button type="button" class="seg-btn" data-kind="Ensemble">Ensembles</button>
+              <button type="button" class="seg-btn" data-kind="Feature-selected">Feature-selected</button>
+            </div>
+            <label class="select"><span>Metric</span>
+              <select id="metricSel">
+                <option value="accuracy">Accuracy</option>
+                <option value="f1">F1-score</option>
+                <option value="roc_auc">ROC-AUC</option>
+                <option value="precision">Precision</option>
+                <option value="recall">Recall</option>
+              </select>
+            </label>
+          </div>
+          <div class="models-grid">
+            <figure class="fig">
+              <figcaption><span class="fig-title" id="modelsTitle">Test accuracy</span><span class="fig-sub">Bars start at 0.50, the coin-flip line. Click a bar to see its confusion matrix.</span></figcaption>
+              <div class="chart" id="modelsChart" style="height:600px"></div>
+            </figure>
+            <aside class="cm-card card pad" id="cmCard" aria-live="polite"></aside>
+          </div>
+          <details class="table-toggle" open><summary>Full results table</summary><div class="table-wrap" id="resultsTable"></div></details>
+        </div>
+
+        <div class="pane" role="tabpanel" id="pane-voting" aria-labelledby="tab-voting" hidden>
+          <figure class="fig">
+            <figcaption><span class="fig-title">Majority vs weighted vs adaptive weighted voting</span><span class="fig-sub">STEP 18 of the pipeline. Same base predictions; only the way votes are combined changes.</span></figcaption>
+            <div class="table-wrap" id="votingTable"></div>
+          </figure>
+          <p class="note" id="adaptiveNote"></p>
+          <figure class="fig">
+            <figcaption><span class="fig-title">Adaptive weights through the test period</span><span class="fig-sub">Share of the vote each model held on each day (7-model ensemble).</span></figcaption>
+            <div class="chart" id="weightsChart" style="height:320px"></div>
+          </figure>
+          <figure class="fig">
+            <figcaption><span class="fig-title">Rolling 60-day accuracy</span><span class="fig-sub">How the three voting methods performed over time. Dotted line: 50%.</span></figcaption>
+            <div class="chart" id="rollingChart" style="height:280px"></div>
+          </figure>
+          <figure class="fig">
+            <figcaption><span class="fig-title">Static voting weights</span><span class="fig-sub">From walk-forward validation F1 inside the training period.</span></figcaption>
+            <div class="table-wrap" id="weightsTable"></div>
+          </figure>
+        </div>
+
+        <div class="pane" role="tabpanel" id="pane-daily" aria-labelledby="tab-daily" hidden>
+          <div class="pane-controls">
+            <label class="select"><span>Show calls from</span><select id="dailySel"></select></label>
+            <div class="legend-inline" aria-hidden="true">
+              <span><i class="tri up"></i>called UP</span><span><i class="tri down"></i>called DOWN</span>
+              <span><i class="sw ok"></i>right</span><span><i class="sw bad"></i>wrong</span>
+            </div>
+          </div>
+          <dl class="mini-stats" id="dailyStats"></dl>
+          <figure class="fig">
+            <figcaption><span class="fig-title">Every call on the test period</span><span class="fig-sub">Close price with the day&rsquo;s call. Drag the slider to move through the whole test period.</span></figcaption>
+            <div class="chart" id="dailyChart" style="height:380px"></div>
+          </figure>
+          <figure class="fig">
+            <figcaption><span class="fig-title">Rolling 60-day hit rate</span></figcaption>
+            <div class="chart" id="dailyRolling" style="height:220px"></div>
+          </figure>
+        </div>
+
+        <div class="pane" role="tabpanel" id="pane-features" aria-labelledby="tab-features" hidden>
+          <p class="note" id="fsNote"></p>
+          <div class="feat-grid">
+            <figure class="fig">
+              <figcaption><span class="fig-title">Mutual information</span><span class="fig-sub">Highlighted: the Top-20 kept by this selector.</span></figcaption>
+              <div class="chart" id="miChart" style="height:640px"></div>
+            </figure>
+            <figure class="fig">
+              <figcaption><span class="fig-title">Random-forest importance</span><span class="fig-sub">Highlighted: the Top-20 kept by this selector.</span></figcaption>
+              <div class="chart" id="treeChart" style="height:640px"></div>
+            </figure>
+          </div>
+          <figure class="fig">
+            <figcaption><span class="fig-title">Walk-forward validation F1 by feature set</span><span class="fig-sub">Mean F1 of the six classical models in each fold. The set with the best mean is used.</span></figcaption>
+            <div class="table-wrap" id="fsTable"></div>
+          </figure>
+        </div>
+
+        <div class="pane" role="tabpanel" id="pane-training" aria-labelledby="tab-training" hidden>
+          <div class="feat-grid">
+            <figure class="fig">
+              <figcaption><span class="fig-title">LSTM loss</span><span class="fig-sub">Training vs validation binary cross-entropy. Training stops after 8 epochs without improvement.</span></figcaption>
+              <div class="chart" id="lstmChart" style="height:280px"></div>
+            </figure>
+            <figure class="fig">
+              <figcaption><span class="fig-title">Vision Transformer loss</span><span class="fig-sub">A widening gap between the lines means the model is memorising rather than learning.</span></figcaption>
+              <div class="chart" id="vitChart" style="height:280px"></div>
+            </figure>
+          </div>
+          <figure class="fig">
+            <figcaption><span class="fig-title">Walk-forward validation scores</span><span class="fig-sub">Out-of-fold predictions inside the training period. These set the voting weights.</span></figcaption>
+            <div class="table-wrap" id="valTable"></div>
+          </figure>
+        </div>
+
+        <div class="pane" role="tabpanel" id="pane-next" aria-labelledby="tab-next" hidden>
+          <div class="next-head">
+            <p class="next-kicker">Calls for the trading day after</p>
+            <p class="next-date" id="nextDate">&mdash;</p>
+            <p class="muted" id="nextClose"></p>
+          </div>
+          <div class="next-grid" id="nextModels"></div>
+          <figure class="fig">
+            <figcaption><span class="fig-title">What the ensembles decided</span></figcaption>
+            <div class="table-wrap" id="nextEnsembles"></div>
+          </figure>
+          <p class="warn-note"><b>This is a backtest artefact, not a forecast.</b> The dataset ends on 30 April 2021, so this is the call the models would have made for the next session. Test accuracy for this project is close to a coin flip and ignores news, costs and slippage. Nothing here is financial advice.</p>
+        </div>
+
+        <div class="pane" role="tabpanel" id="pane-checks" aria-labelledby="tab-checks" hidden>
+          <p class="note" id="checksNote"></p>
+          <ul class="checks" id="checksList"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== DOWNLOADS ============================== -->
+  <section class="section wrap" id="downloads" aria-labelledby="dTitle">
+    <div class="section-head">
+      <p class="eyebrow">Downloads</p>
+      <h2 id="dTitle">Take the outputs with you</h2>
+      <p class="lede">Every figure, table and log the pipeline produced, as plain PNG, CSV and JSON files.</p>
+    </div>
+    <div class="dl-grid">
+      <article class="card pad dl-card">
+        <h3>One stock</h3>
+        <p class="muted">Ten figures, five CSV tables, the JSON summary and the full pipeline log.</p>
+        <div class="dl-row">
+          <label class="select grow"><span class="sr-only">Stock</span><select id="dlStock"></select></label>
+          <button type="button" class="btn btn-primary" id="dlStockBtn">Download ZIP</button>
+        </div>
+        <ul class="file-list">
+          <li><code>plots/</code> 10 PNG figures</li>
+          <li><code>tables/results.csv</code> every model, ensemble and variant</li>
+          <li><code>tables/test_predictions.csv</code> each day&rsquo;s P(UP) and call</li>
+          <li><code>tables/voting_comparison.csv</code>, <code>validation_scores.csv</code>, <code>price_history_adjusted.csv</code></li>
+          <li><code>data/summary.json</code>, <code>series.json</code>, <code>pipeline_log.txt</code></li>
+        </ul>
+      </article>
+      <article class="card pad dl-card">
+        <h3>Every stock</h3>
+        <p class="muted">All result tables for all stocks plus the cross-stock summaries. No figures, so it stays small.</p>
+        <div class="dl-row">
+          <button type="button" class="btn btn-primary" id="dlAllBtn">Download all results</button>
+          <span class="muted small" id="dlAllSize"></span>
+        </div>
+        <ul class="file-list">
+          <li><code>summary/all_stocks.csv</code> one row per stock</li>
+          <li><code>summary/all_results.csv</code> every stock &times; every method</li>
+          <li><code>summary/method_averages.csv</code> each method averaged over stocks</li>
+          <li><code>stocks/&lt;SYMBOL&gt;/</code> that stock&rsquo;s tables and summary</li>
+        </ul>
+      </article>
+    </div>
+    <p class="dl-status" id="dlStatus" role="status"></p>
+  </section>
+
+  <!-- ============================== LIMITS ============================== -->
+  <section class="section wrap" id="limits" aria-labelledby="lTitle">
+    <div class="section-head">
+      <p class="eyebrow">Limits</p>
+      <h2 id="lTitle">Read the numbers with these in mind</h2>
+    </div>
+    <ul class="limits">
+      <li><b>One test period per stock.</b> About 1,000 days is a small sample. Differences under roughly &plusmn;3 accuracy points are within the noise that chance alone produces.</li>
+      <li><b>&ldquo;Best&rdquo; is picked after the fact.</b> The best single model and the best ensemble per stock are chosen by looking at test scores, so they flatter the method. Compare fixed rules, like majority or adaptive voting, for a fair read.</li>
+      <li><b>No trading costs.</b> Accuracy here ignores brokerage, taxes, slippage and position sizing. A 52% hit rate is not a profitable strategy by itself.</li>
+      <li><b>Historical data only.</b> The dataset stops on 30 April 2021. The next-day calls are what the models would have said then, not predictions for today.</li>
+      <li><b>Run details.</b> This batch ran the deep models on the <span data-fill="dl_backend">PyTorch</span> backend with fixed seeds. Small differences from a TensorFlow run in Colab are expected.</li>
+      <li><b>Not financial advice.</b> This is an academic study of model comparison, not a recommendation to buy or sell anything.</li>
+    </ul>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <div>
+      <p class="brand-name">QuantPredict</p>
+      <p class="muted small">Next-day stock direction prediction using machine learning, LSTM, Vision Transformer and adaptive ensemble voting.</p>
+    </div>
+    <div class="small">
+      <p>Aditya Rai &middot; B.Tech Information Technology, VIT Vellore</p>
+      <p>Guide: Dr. Brijendra Singh, SCORE</p>
+    </div>
+    <div class="small">
+      <p>Data: Rao, R. (2021). <a href="https://www.kaggle.com/datasets/rohanrao/nifty50-stock-market-data" target="_blank" rel="noopener">NIFTY-50 Stock Market Data (2000&ndash;2021)</a>, Kaggle.</p>
+      <p class="muted" id="genNote"></p>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+/*__APP__*/
+</script>

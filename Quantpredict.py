@@ -131,9 +131,9 @@ print("DL backend:", DL_BACKEND)
 # CSV in archive/ (skipping the combined/metadata files and empty files).
 # Produces: df (raw rows), filename
 # =====================================================================
-STOCK_SYMBOL = "RELIANCE"          # any file name in archive/ without ".csv", e.g. "TCS", "INFY"
+STOCK_SYMBOL = os.environ.get("QP_STOCK_SYMBOL", "RELIANCE")   # any file name in archive/ without ".csv", e.g. "TCS", "INFY"
 DATA_DIR = "archive"
-OUTPUT_DIR = "outputs"             # figures and result tables are saved here
+OUTPUT_DIR = os.environ.get("QP_OUTPUT_DIR", "outputs")        # figures and result tables are saved here
 # Files in archive/ that are not single-stock price histories.
 NON_STOCK_FILES = {"NIFTY50_all.csv", "stock_metadata.csv"}
 
